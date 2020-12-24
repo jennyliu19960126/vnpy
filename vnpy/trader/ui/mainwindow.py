@@ -35,11 +35,14 @@ class MainWindow(QtWidgets.QMainWindow):
     Main window of VN Trader.
     """
 
-    def __init__(self, main_engine: MainEngine, event_engine: EventEngine):
+    def __init__(self, main_engine: MainEngine, event_engine: EventEngine = None):
         """"""
         super(MainWindow, self).__init__()
-        self.main_engine: MainEngine = main_engine
-        self.event_engine: EventEngine = event_engine
+        self.main_engine = main_engine
+        if not event_engine:
+            self.event_engine = main_engine.event_engine
+        else:
+            self.event_engine = event_engine
 
         self.window_title: str = f"VN Trader {vnpy.__version__} [{TRADER_DIR}]"
 
