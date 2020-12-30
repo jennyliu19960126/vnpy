@@ -26,7 +26,9 @@ class OffsetConverter:
         if not self.is_convert_required(position.vt_symbol):
             return
 
-        holding = self.get_position_holding(position.vt_symbol)
+        vt_symbol = position.vt_symbol
+        gateway_name = position.gateway_name
+        holding = self.get_position_holding(f"{vt_symbol}@{gateway_name}")
         holding.update_position(position)
 
     def update_trade(self, trade: TradeData) -> None:
@@ -34,7 +36,9 @@ class OffsetConverter:
         if not self.is_convert_required(trade.vt_symbol):
             return
 
-        holding = self.get_position_holding(trade.vt_symbol)
+        vt_symbol = trade.vt_symbol
+        gateway_name = trade.gateway_name
+        holding = self.get_position_holding(f"{vt_symbol}@{gateway_name}")
         holding.update_trade(trade)
 
     def update_order(self, order: OrderData) -> None:
@@ -42,32 +46,35 @@ class OffsetConverter:
         if not self.is_convert_required(order.vt_symbol):
             return
 
-        holding = self.get_position_holding(order.vt_symbol)
+        vt_symbol = order.vt_symbol
+        gateway_name = order.gateway_name
+        holding = self.get_position_holding(f"{vt_symbol}@{gateway_name}")
         holding.update_order(order)
 
-    def update_order_request(self, req: OrderRequest, vt_orderid: str) -> None:
+    def update_order_request(self, req: OrderRequest, gateway_name: str, vt_orderid: str):
         """"""
         if not self.is_convert_required(req.vt_symbol):
             return
 
-        holding = self.get_position_holding(req.vt_symbol)
+        holding = self.get_position_holding(f"{req.vt_symbol}@{gateway_name}")
         holding.update_order_request(req, vt_orderid)
 
-    def get_position_holding(self, vt_symbol: str) -> "PositionHolding":
+    def get_position_holding(self, vt_symbol_at_gateway_name: str) -> "PositionHolding":
         """"""
-        holding = self.holdings.get(vt_symbol, None)
+        holding = self.holdings.get(vt_symbol_at_gateway_name, None)
         if not holding:
+            vt_symbol, gateway_name = vt_symbol_at_gateway_name.split("@")
             contract = self.main_engine.get_contract(vt_symbol)
-            holding = PositionHolding(contract)
-            self.holdings[vt_symbol] = holding
+            holding = PositionHolding(contract, gateway_name)
+            self.holdings[f"{vt_symbol}@{gateway_name}"] = holding
         return holding
 
-    def convert_order_request(self, req: OrderRequest, lock: bool) -> List[OrderRequest]:
+    def convert_order_request(self, req: OrderRequest, gateway_name: str, lock: bool) -> List[OrderRequest]:
         """"""
         if not self.is_convert_required(req.vt_symbol):
             return [req]
 
-        holding = self.get_position_holding(req.vt_symbol)
+        holding = self.get_position_holding(f"{req.vt_symbol}@{gateway_name}")
 
         if lock:
             return holding.convert_order_request_lock(req)
@@ -94,10 +101,11 @@ class OffsetConverter:
 class PositionHolding:
     """"""
 
-    def __init__(self, contract: ContractData):
+    def __init__(self, contract: ContractData, gateway_name: str):
         """"""
         self.vt_symbol: str = contract.vt_symbol
         self.exchange: Exchange = contract.exchange
+        self.gateway_name = gateway_name
 
         self.active_orders: Dict[str, OrderData] = {}
 
@@ -140,9 +148,10 @@ class PositionHolding:
 
     def update_order_request(self, req: OrderRequest, vt_orderid: str) -> None:
         """"""
-        gateway_name, orderid = vt_orderid.split(".")
+        gateway_name, account_name, orderid = vt_orderid.split(".")
+        order_gateway_name = ".".join([gateway_name, account_name])
 
-        order = req.create_order_data(orderid, gateway_name)
+        order = req.create_order_data(orderid, order_gateway_name)
         self.update_order(order)
 
     def update_trade(self, trade: TradeData) -> None:
