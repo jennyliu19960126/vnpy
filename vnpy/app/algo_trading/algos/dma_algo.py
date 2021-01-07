@@ -11,6 +11,7 @@ class DmaAlgo(AlgoTemplate):
     display_name = "DMA 直接委托"
 
     default_setting = {
+        "account_name": "",
         "vt_symbol": "",
         "direction": [Direction.LONG.value, Direction.SHORT.value],
         "order_type": [
